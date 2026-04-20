@@ -357,7 +357,7 @@ void SRF08Manager::_selectActivePair() {
     // Spezieller 4-Sensor-Modus:
     // Paar 0+2 (vorn/hinten), danach 1+3 (links/rechts)
     if (_count == 4) {
-        if ((_current & 0x01) == 0) {
+        if ((_current % 2) == 0) {
             _activeA = 0;
             _activeB = 2;
         } else {
@@ -397,11 +397,11 @@ void SRF08Manager::_advancePair() {
     }
 
     if (_count == 4) {
-        _current = static_cast<uint8_t>((_current + 1) & 0x01);
+        _current = (_current == 0) ? 1 : 0;
         return;
     }
 
-    if ((_count & 0x01) == 0) {
+    if ((_count % 2) == 0) {
         _current = static_cast<uint8_t>((_current + 2) % _count);
         return;
     }
