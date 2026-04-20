@@ -402,10 +402,10 @@ void SRF08Manager::_advancePair() {
 
     // Allgemeiner Modus (>=2 und !=4): Paar-Slots 0+1, 2+3, ...
     // Bei ungerader Anzahl misst der letzte Slot nur einen Sensor.
-    const uint8_t slotCount = static_cast<uint8_t>((_count + 1) / 2);
-    uint8_t slotIndex = static_cast<uint8_t>(_current / 2);
-    slotIndex = static_cast<uint8_t>((slotIndex + 1) % slotCount);
-    _current = static_cast<uint8_t>(slotIndex * 2);
+    const uint8_t slotCount = (_count + 1) / 2;
+    uint8_t slotIndex = _current / 2;
+    slotIndex = (slotIndex + 1) % slotCount;
+    _current = slotIndex * 2;
 }
 
 uint16_t SRF08Manager::getDistance(uint8_t idx) const {
