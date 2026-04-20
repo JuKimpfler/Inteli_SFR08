@@ -11,7 +11,7 @@
  * ║       2. Sprungfilter (Jump-Guard)                                       ║
  * ║       3. Median-Filter (Ghost-Echo Unterdrückung)                       ║
  * ║       4. EMA-Filter   (Glättung)                                        ║
- * ║   • SRF08Manager: Sequenzielles Feuern mehrerer Sensoren (kein Crosstalk)║
+ * ║   • SRF08Manager: Paarweises Feuern mehrerer Sensoren (2 gleichzeitig)   ║
  * ║   • Konfigurierbare Range & Gain Register (hohe Abfragerate < 20ms)     ║
  * ║   • I²C Address Change Support                                          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
@@ -195,13 +195,14 @@ private:
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  SRF08Manager  —  Mehrere Sensoren sequenziell betreiben
+//  SRF08Manager  —  Mehrere Sensoren paarweise (2 gleichzeitig) betreiben
 // ═════════════════════════════════════════════════════════════════════════════
 /**
  * Verwaltet bis zu MAX_SENSORS SRF08-Sensoren.
- * Sensoren werden NACHEINANDER gefeuert → kein Crosstalk.
+ * Sensoren werden in Paaren gefeuert (2 gleichzeitig).
+ * Bei 4 Sensoren: Paar 0+2 und Paar 1+3.
  *
- * Gesamtlatenz (2 Sensoren, 2m-Range):  2 × 14ms = ~28ms pro Volldurchlauf
+ * Gesamtlatenz (2 Sensoren, 2m-Range):  1 × 14ms = ~14ms pro Volldurchlauf
  * Jeder Sensor liefert individuell Daten sobald seine Messung abgeschlossen ist.
  */
 class SRF08Manager {
@@ -237,8 +238,17 @@ public:
     SRF08Sensor* getSensor(uint8_t idx) const;
 
 private:
+    static constexpr uint8_t INVALID_INDEX = 0xFF;
+
     SRF08Sensor* _sensors[MAX_SENSORS];
     uint8_t      _count;
-    uint8_t      _current;       ///< Index des aktuell messenden Sensors
+    uint8_t      _current;       ///< Aktueller Paar-Start / Paar-Index
+    uint8_t      _activeA;       ///< Sensor-Index im aktiven Paar
+    uint8_t      _activeB;       ///< Sensor-Index im aktiven Paar (oder INVALID_INDEX)
     bool         _newData[MAX_SENSORS];
+
+    void _selectActivePair();
+    void _startActivePair();
+    bool _activePairFinished() const;
+    void _advancePair();
 };

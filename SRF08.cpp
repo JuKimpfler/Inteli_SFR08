@@ -299,6 +299,8 @@ uint16_t SRF08Sensor::_applyFilters(uint16_t raw) {
 SRF08Manager::SRF08Manager()
     : _count(0)
     , _current(0)
+    , _activeA(INVALID_INDEX)
+    , _activeB(INVALID_INDEX)
 {
     memset(_sensors, 0, sizeof(_sensors));
     memset(_newData, 0, sizeof(_newData));
@@ -317,25 +319,98 @@ void SRF08Manager::begin(TwoWire& wire) {
         delay(15); // Kurz warten zwischen Sensor-Inits
     }
 
-    // Erste Messung des ersten Sensors starten
+    // Erste Messung des ersten Paares starten
     if (_count > 0) {
         _current = 0;
-        _sensors[0]->startRanging();
+        _startActivePair();
     }
 }
 
 void SRF08Manager::update() {
     if (_count == 0) return;
 
-    SRF08Sensor* cur = _sensors[_current];
-
     // update() gibt true zurück wenn neue Daten bereit sind
-    if (cur->update()) {
-        _newData[_current] = true;
+    if (_activeA != INVALID_INDEX && _sensors[_activeA]->update()) {
+        _newData[_activeA] = true;
+    }
+    if (_activeB != INVALID_INDEX && _sensors[_activeB]->update()) {
+        _newData[_activeB] = true;
+    }
 
-        // Nächsten Sensor starten (sequenziell → kein Crosstalk)
-        _current = (_current + 1) % _count;
-        _sensors[_current]->startRanging();
+    // Erst wenn beide Sensoren des aktiven Paares fertig sind, zum nächsten Paar
+    if (_activePairFinished()) {
+        _advancePair();
+        _startActivePair();
+    }
+}
+
+void SRF08Manager::_selectActivePair() {
+    _activeA = INVALID_INDEX;
+    _activeB = INVALID_INDEX;
+
+    if (_count == 0) return;
+    if (_count == 1) {
+        _activeA = 0;
+        return;
+    }
+
+    // Spezieller 4-Sensor-Modus:
+    // Paar 0+2 (vorn/hinten), danach 1+3 (links/rechts)
+    if (_count == 4) {
+        if ((_current & 0x01) == 0) {
+            _activeA = 0;
+            _activeB = 2;
+        } else {
+            _activeA = 1;
+            _activeB = 3;
+        }
+        return;
+    }
+
+    // Allgemeiner Modus: benachbarte Paare (0+1, 2+3, ...)
+    _activeA = _current;
+    _activeB = (_current + 1 < _count) ? static_cast<uint8_t>(_current + 1)
+                                       : INVALID_INDEX;
+}
+
+void SRF08Manager::_startActivePair() {
+    _selectActivePair();
+    if (_activeA != INVALID_INDEX) _sensors[_activeA]->startRanging();
+    if (_activeB != INVALID_INDEX) _sensors[_activeB]->startRanging();
+}
+
+bool SRF08Manager::_activePairFinished() const {
+    if (_activeA == INVALID_INDEX) return true;
+
+    const bool aDone = (_sensors[_activeA]->getState() != SRF08State::RANGING);
+    const bool bDone = (_activeB == INVALID_INDEX)
+        ? true
+        : (_sensors[_activeB]->getState() != SRF08State::RANGING);
+
+    return aDone && bDone;
+}
+
+void SRF08Manager::_advancePair() {
+    if (_count <= 1) {
+        _current = 0;
+        return;
+    }
+
+    if (_count == 4) {
+        _current = static_cast<uint8_t>((_current + 1) & 0x01);
+        return;
+    }
+
+    if ((_count & 0x01) == 0) {
+        _current = static_cast<uint8_t>((_current + 2) % _count);
+        return;
+    }
+
+    // Ungerade Anzahl Sensoren: letzter Sensor misst allein
+    if (_current + 2 < _count) {
+        _current = static_cast<uint8_t>(_current + 2);
+    } else {
+        _current = 0;
     }
 }
 
