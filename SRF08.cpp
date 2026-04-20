@@ -369,8 +369,7 @@ void SRF08Manager::_selectActivePair() {
 
     // Allgemeiner Modus: benachbarte Paare (0+1, 2+3, ...)
     _activeA = _current;
-    _activeB = (_current + 1 < _count) ? static_cast<uint8_t>(_current + 1)
-                                       : INVALID_INDEX;
+    _activeB = (_current + 1 < _count) ? (_current + 1) : INVALID_INDEX;
 }
 
 void SRF08Manager::_startActivePair() {
@@ -402,15 +401,15 @@ void SRF08Manager::_advancePair() {
     }
 
     if ((_count % 2) == 0) {
-        _current = static_cast<uint8_t>((_current + 2) % _count);
+        _current = (_current + 2) % _count;
         return;
     }
 
     // Ungerade Anzahl Sensoren: letzter Sensor misst allein
-    if (_current + 2 < _count) {
-        _current = static_cast<uint8_t>(_current + 2);
-    } else {
+    if (_current + 2 >= _count) {
         _current = 0;
+    } else {
+        _current = _current + 2;
     }
 }
 
