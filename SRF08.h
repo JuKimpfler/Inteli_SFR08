@@ -155,10 +155,10 @@ public:
     /**
      * Ändert die I²C Adresse des Sensors.
      * NUR aufrufen wenn GENAU EIN Sensor am Bus ist!
-     * @param newAddr8bit  Neue 8-bit Adresse (0xE0, 0xE2, 0xE4 … 0xFE)
+     * @param newAddr7or8bit  Neue 8-bit Adresse (0xE0, 0xE2, ... 0xFE) oder 7-bit (0x70..0x7F)
      * @return true bei Erfolg
      */
-    bool changeI2CAddress(uint8_t newAddr8bit);
+    bool changeI2CAddress(uint8_t newAddr7or8bit);
 
 private:
     uint8_t     _addr;

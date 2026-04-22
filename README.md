@@ -269,12 +269,12 @@ void loop() {
 #### Konstruktor
 
 ```cpp
-SRF08Sensor(uint8_t addr7bit,
+SRF08Sensor(uint8_t addr7bitOr8bit,
             uint8_t rangeReg = SRF08_RANGE_2M,
             uint8_t gainReg  = SRF08_GAIN_MID);
 ```
 
-`addr7bit` kann als 7-bit oder 8-bit SRF08-Adresse angegeben werden:
+`addr7bitOr8bit` kann als 7-bit oder 8-bit SRF08-Adresse angegeben werden:
 
 ```cpp
 SRF08Sensor s1(SRF08_ADDR(0xE0));  // 8-bit Hardware-Adresse via Makro

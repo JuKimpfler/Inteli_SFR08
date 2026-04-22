@@ -165,8 +165,12 @@ bool SRF08Sensor::update() {
 
 // ── I²C Adresse ändern ───────────────────────────────────────────────────────
 
-bool SRF08Sensor::changeI2CAddress(uint8_t newAddr8bit) {
+bool SRF08Sensor::changeI2CAddress(uint8_t newAddr7or8bit) {
     if (_wire == nullptr) return false;
+
+    uint8_t newAddr8bit = (newAddr7or8bit <= 0x7F)
+        ? static_cast<uint8_t>(newAddr7or8bit << 1)
+        : newAddr7or8bit;
 
     // Nur gerade Adressen im Bereich 0xE0–0xFE zulässig
     if (newAddr8bit < 0xE0 || newAddr8bit > 0xFE || (newAddr8bit & 0x01))
