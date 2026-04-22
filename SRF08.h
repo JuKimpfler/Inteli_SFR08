@@ -106,11 +106,11 @@ enum class SRF08State : uint8_t {
 class SRF08Sensor {
 public:
     /**
-     * @param addr7bit  7-bit I²C Adresse → SRF08_ADDR(0xE0)
+     * @param addr7bitOr8bit  7-bit Adresse (z.B. 0x70) ODER 8-bit SRF08-Adresse (z.B. 0xE0)
      * @param rangeReg  Range-Register (z.B. SRF08_RANGE_2M)
      * @param gainReg   Gain-Register  (z.B. SRF08_GAIN_MID)
      */
-    SRF08Sensor(uint8_t addr7bit,
+    SRF08Sensor(uint8_t addr7bitOr8bit,
                 uint8_t rangeReg = SRF08_RANGE_2M,
                 uint8_t gainReg  = SRF08_GAIN_MID);
 
@@ -155,10 +155,10 @@ public:
     /**
      * Ändert die I²C Adresse des Sensors.
      * NUR aufrufen wenn GENAU EIN Sensor am Bus ist!
-     * @param newAddr8bit  Neue 8-bit Adresse (0xE0, 0xE2, 0xE4 … 0xFE)
+     * @param newAddr7or8bit  Neue 8-bit Adresse (0xE0, 0xE2, ... 0xFE) oder 7-bit (0x70..0x7F)
      * @return true bei Erfolg
      */
-    bool changeI2CAddress(uint8_t newAddr8bit);
+    bool changeI2CAddress(uint8_t newAddr7or8bit);
 
 private:
     uint8_t     _addr;
@@ -237,6 +237,7 @@ public:
     SRF08Sensor* getSensor(uint8_t idx) const;
 
 private:
+    int8_t _findNextInitializedIndex(uint8_t startIdx) const;
     SRF08Sensor* _sensors[MAX_SENSORS];
     uint8_t      _count;
     uint8_t      _current;       ///< Index des aktuell messenden Sensors

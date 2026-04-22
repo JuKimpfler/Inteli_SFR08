@@ -6,6 +6,12 @@
 #include "SRF08.h"
 #include <string.h>
 
+static uint8_t normalizeSRF08Address(uint8_t addr7bitOr8bit) {
+    return (addr7bitOr8bit > 0x7F)
+        ? static_cast<uint8_t>(addr7bitOr8bit >> 1)
+        : addr7bitOr8bit;
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  MedianFilter
 // ═════════════════════════════════════════════════════════════════════════════
@@ -48,8 +54,8 @@ uint16_t MedianFilter::compute() const {
 //  SRF08Sensor
 // ═════════════════════════════════════════════════════════════════════════════
 
-SRF08Sensor::SRF08Sensor(uint8_t addr7bit, uint8_t rangeReg, uint8_t gainReg)
-    : _addr(addr7bit)
+SRF08Sensor::SRF08Sensor(uint8_t addr7bitOr8bit, uint8_t rangeReg, uint8_t gainReg)
+    : _addr(normalizeSRF08Address(addr7bitOr8bit))
     , _rangeReg(rangeReg)
     , _gainReg(gainReg)
     , _wire(nullptr)
@@ -159,7 +165,13 @@ bool SRF08Sensor::update() {
 
 // ── I²C Adresse ändern ───────────────────────────────────────────────────────
 
-bool SRF08Sensor::changeI2CAddress(uint8_t newAddr8bit) {
+bool SRF08Sensor::changeI2CAddress(uint8_t newAddr7or8bit) {
+    if (_wire == nullptr) return false;
+
+    uint8_t newAddr8bit = (newAddr7or8bit <= 0x7F)
+        ? static_cast<uint8_t>(newAddr7or8bit << 1)
+        : newAddr7or8bit;
+
     // Nur gerade Adressen im Bereich 0xE0–0xFE zulässig
     if (newAddr8bit < 0xE0 || newAddr8bit > 0xFE || (newAddr8bit & 0x01))
         return false;
@@ -311,16 +323,20 @@ bool SRF08Manager::addSensor(SRF08Sensor* sensor) {
 }
 
 void SRF08Manager::begin(TwoWire& wire) {
+    int8_t firstInitialized = -1;
+
     for (uint8_t i = 0; i < _count; i++) {
         bool ok = _sensors[i]->begin(wire);
-        (void)ok; // In Produktivcode: Fehlerbehandlung hier
+        if (ok && firstInitialized < 0) {
+            firstInitialized = static_cast<int8_t>(i);
+        }
         delay(15); // Kurz warten zwischen Sensor-Inits
     }
 
-    // Erste Messung des ersten Sensors starten
-    if (_count > 0) {
-        _current = 0;
-        _sensors[0]->startRanging();
+    // Erste Messung nur mit erfolgreich initialisiertem Sensor starten
+    if (firstInitialized >= 0) {
+        _current = static_cast<uint8_t>(firstInitialized);
+        _sensors[_current]->startRanging();
     }
 }
 
@@ -328,13 +344,22 @@ void SRF08Manager::update() {
     if (_count == 0) return;
 
     SRF08Sensor* cur = _sensors[_current];
+    if (cur == nullptr || cur->getState() == SRF08State::UNINITIALIZED) {
+        int8_t next = _findNextInitializedIndex(static_cast<uint8_t>(_current + 1));
+        if (next < 0) return; // Kein Sensor erfolgreich initialisiert
+        _current = static_cast<uint8_t>(next);
+        _sensors[_current]->startRanging();
+        return;
+    }
 
     // update() gibt true zurück wenn neue Daten bereit sind
     if (cur->update()) {
         _newData[_current] = true;
 
-        // Nächsten Sensor starten (sequenziell → kein Crosstalk)
-        _current = (_current + 1) % _count;
+        // Nächsten erfolgreich initialisierten Sensor starten (sequenziell → kein Crosstalk)
+        int8_t next = _findNextInitializedIndex(static_cast<uint8_t>(_current + 1));
+        if (next < 0) return;
+        _current = static_cast<uint8_t>(next);
         _sensors[_current]->startRanging();
     }
 }
@@ -364,4 +389,17 @@ bool SRF08Manager::isNewData(uint8_t idx) {
 SRF08Sensor* SRF08Manager::getSensor(uint8_t idx) const {
     if (idx >= _count) return nullptr;
     return _sensors[idx];
+}
+
+int8_t SRF08Manager::_findNextInitializedIndex(uint8_t startIdx) const {
+    if (_count == 0) return -1;
+
+    for (uint8_t step = 0; step < _count; step++) {
+        uint8_t idx = static_cast<uint8_t>((startIdx + step) % _count);
+        SRF08Sensor* s = _sensors[idx];
+        if (s != nullptr && s->getState() != SRF08State::UNINITIALIZED) {
+            return static_cast<int8_t>(idx);
+        }
+    }
+    return -1;
 }
