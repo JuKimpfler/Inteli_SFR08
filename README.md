@@ -274,11 +274,12 @@ SRF08Sensor(uint8_t addr7bit,
             uint8_t gainReg  = SRF08_GAIN_MID);
 ```
 
-`addr7bit` ist die 7-bit I²C-Adresse. Immer das `SRF08_ADDR()`-Makro verwenden:
+`addr7bit` kann als 7-bit oder 8-bit SRF08-Adresse angegeben werden:
 
 ```cpp
-SRF08Sensor s(SRF08_ADDR(0xE0));  // Korrekt: 0xE0 >> 1 = 0x70
-SRF08Sensor s(0xE0);               // FALSCH — Wire erwartet 7-bit!
+SRF08Sensor s1(SRF08_ADDR(0xE0));  // 8-bit Hardware-Adresse via Makro
+SRF08Sensor s2(0xE0);              // 8-bit direkt (wird intern auf 7-bit normalisiert)
+SRF08Sensor s3(0x70);              // 7-bit direkt (z.B. aus I²C-Scanner)
 ```
 
 #### Setup-Methoden
@@ -685,6 +686,7 @@ void handleSensors() {
 3. **DNC-Pin prüfen:** Muss offen bleiben
 4. **Adresse prüfen:** Ist der richtige `SRF08_ADDR(...)` angegeben?
 5. **I²C-Scanner ausführen:** Standard-I²C-Scanner-Sketch zur Diagnose
+6. **Richtigen Bus prüfen:** Wenn die Sensoren an `Wire1` hängen, müssen Scanner **und** Bibliothek mit `Wire1` laufen (`Wire1.begin();`, `sensor.begin(Wire1)` bzw. `sonar.begin(Wire1)`).
 
 ```cpp
 // I²C-Scanner (in setup() ausführen):
