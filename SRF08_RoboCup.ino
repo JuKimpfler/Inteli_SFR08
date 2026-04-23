@@ -74,9 +74,17 @@ void setup() {
     sonar.begin(Wire1);
 
     // Status prüfen
-    Serial.print(F("Sensor VORNE  (0xE0): "));
+    // Hinweis: Die Bibliothek verwendet 7-bit Adressen (SRF08-Aufdruckadresse >> 1)
+    //   0xE0 >> 1 = 0x70,  0xE2 >> 1 = 0x71
+    // Der Scanner zeigt dieselben 7-bit Adressen. Stimmen sie überein?
+    Serial.print(F("Sensor VORNE  (0xE0 → 7-bit 0x"));
+    Serial.print(sensorVorne.getAddress(),  HEX);
+    Serial.print(F("): "));
     Serial.println(sensorVorne.getState()  != SRF08State::UNINITIALIZED ? F("OK") : F("FEHLER!"));
-    Serial.print(F("Sensor HINTEN (0xE2): "));
+
+    Serial.print(F("Sensor HINTEN (0xE2 → 7-bit 0x"));
+    Serial.print(sensorHinten.getAddress(), HEX);
+    Serial.print(F("): "));
     Serial.println(sensorHinten.getState() != SRF08State::UNINITIALIZED ? F("OK") : F("FEHLER!"));
 
     Serial.println(F("Starte Messung...\n"));

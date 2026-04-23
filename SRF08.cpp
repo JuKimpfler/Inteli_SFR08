@@ -80,13 +80,20 @@ SRF08Sensor::SRF08Sensor(uint8_t addr7bitOr8bit, uint8_t rangeReg, uint8_t gainR
 bool SRF08Sensor::begin(TwoWire& wire) {
     _wire = &wire;
 
-    // Sensor-Erreichbarkeit prüfen
-    _wire->beginTransmission(_addr);
-    if (_wire->endTransmission() != 0) {
-        return false;  // Sensor nicht gefunden
-    }
+    // Startup-Settling: SRF08 braucht nach Power-On etwas Zeit bevor er I²C-Anfragen beantwortet
+    delay(15);
 
-    delay(15); // Startup-Settling nach Power-On
+    // Sensor-Erreichbarkeit prüfen — bis zu 3 Versuche mit je 10 ms Pause
+    bool found = false;
+    for (uint8_t attempt = 0; attempt < 3 && !found; attempt++) {
+        _wire->beginTransmission(_addr);
+        if (_wire->endTransmission() == 0) {
+            found = true;
+        } else {
+            delay(10);
+        }
+    }
+    if (!found) return false;
 
     // Gain setzen BEVOR Range, da Range-Register = Echo-Register beim Lesen
     _writeReg(SRF08_REG_GAIN,  _gainReg);
