@@ -53,8 +53,8 @@ void setup() {
     Serial.println(F("=== SRF08 RoboCup Demo ==="));
 
     // I²C initialisieren — 400kHz (Fast Mode) für Teensy 4.0
-    Wire.begin();
-    Wire.setClock(400000);
+    Wire1.begin();
+    Wire1.setClock(400000);
 
     // Filter-Parameter anpassen (optional — Defaults sind bereits gut)
     // Bei sehr reflektiven Spielfeldwänden: niedrigerer EMA-Faktor (träger)
@@ -71,12 +71,20 @@ void setup() {
     sonar.addSensor(&sensorHinten);
 
     // Initialisieren — begin() testet Erreichbarkeit
-    sonar.begin(Wire);
+    sonar.begin(Wire1);
 
     // Status prüfen
-    Serial.print(F("Sensor VORNE  (0xE0): "));
+    // Hinweis: Die Bibliothek verwendet 7-bit Adressen (SRF08-Aufdruckadresse >> 1)
+    //   0xE0 >> 1 = 0x70,  0xE2 >> 1 = 0x71
+    // Der Scanner zeigt dieselben 7-bit Adressen. Stimmen sie überein?
+    Serial.print(F("Sensor VORNE  (0xE0 → 7-bit 0x"));
+    Serial.print(sensorVorne.getAddress(),  HEX);
+    Serial.print(F("): "));
     Serial.println(sensorVorne.getState()  != SRF08State::UNINITIALIZED ? F("OK") : F("FEHLER!"));
-    Serial.print(F("Sensor HINTEN (0xE2): "));
+
+    Serial.print(F("Sensor HINTEN (0xE2 → 7-bit 0x"));
+    Serial.print(sensorHinten.getAddress(), HEX);
+    Serial.print(F("): "));
     Serial.println(sensorHinten.getState() != SRF08State::UNINITIALIZED ? F("OK") : F("FEHLER!"));
 
     Serial.println(F("Starte Messung...\n"));
@@ -157,12 +165,12 @@ void handleObstacleAvoidance() {
  *   4. Funktion wieder auskommentieren, zweiten Sensor anschliessen
  */
 void reprogramAddress() {
-    Wire.begin();
-    Wire.setClock(100000); // Langsamere Clock für Adressänderung empfohlen
+    Wire1.begin();
+    Wire1.setClock(100000); // Langsamere Clock für Adressänderung empfohlen
 
     // Temporärer Sensor-Objekt bei Werksadresse 0xE0
     SRF08Sensor tempSensor(SRF08_ADDR(0xE0));
-    if (!tempSensor.begin(Wire)) {
+    if (!tempSensor.begin(Wire1)) {
         Serial.println(F("Sensor nicht gefunden!"));
         return;
     }
